@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AI Survey Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--ink:#0f172a;--mut:#64748b;--line:#e5e7eb;--soft:#f8fafc;--brand:#4f46e5;box-sizing:border-box}
+*{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,'Segoe UI',Arial,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+header{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:flex-end;margin-bottom:24px}
+h1{font-size:24px;font-weight:700;margin:0 0 4px;letter-spacing:-.02em}
+.sub{color:var(--mut);font-size:14px;margin:0}
+.tools{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.tog{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mut);cursor:pointer}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 14px;font:inherit;font-size:14px;font-weight:500;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+.lab{font-size:13px;color:var(--mut);font-weight:500}
+.val{font-size:28px;font-weight:700;margin-top:6px;letter-spacing:-.02em;overflow-wrap:anywhere}
+.val.sm{font-size:20px;line-height:1.25;padding-top:6px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.card h2{font-size:16px;font-weight:600;margin:0 0 14px}
+.donut{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.legend{flex:1;min-width:150px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.legend div{display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.legend b{margin-left:auto;padding-left:10px}
+.bar{display:grid;grid-template-columns:130px 1fr 28px;gap:10px;align-items:center;font-size:14px;margin-bottom:12px}
+.track{background:#eef0f4;border-radius:8px;height:14px;overflow:hidden}
+.fill{height:100%;background:var(--brand);border-radius:8px;transition:width .4s}
+.tablecard{margin-top:16px;padding:0}
+.tablecard h2{padding:18px 20px 0}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:860px}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);background:var(--soft);padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+tr:hover td{background:var(--soft)}
+.tag{background:#fef3c7;color:#92400e;border-radius:6px;font-size:11px;font-weight:600;padding:2px 6px;margin-left:6px}
+.msg{padding:28px 20px;text-align:center;color:var(--mut);font-size:14px}
+.msg.err{color:#b91c1c}
+.empty{color:var(--mut);font-size:14px}
+@media(max-width:860px){.cards{grid-template-columns:1fr 1fr}.charts{grid-template-columns:1fr}}
+@media(max-width:480px){.cards{grid-template-columns:1fr}.bar{grid-template-columns:100px 1fr 24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>AI Survey Dashboard</h1><p class="sub">Artificial Intelligence: Are We Ready for the Future?</p></div>
+  <div class="tools">
+    <label class="tog"><input type="checkbox" id="tt"> Show test records</label>
+    <button class="btn" id="rf">Refresh</button>
+  </div>
+</header>
+<div id="status" class="sub" style="margin-bottom:14px"></div>
+<section class="cards">
+  <div class="card"><div class="lab">Total Responses</div><div class="val" id="m1">–</div></div>
+  <div class="card"><div class="lab">Average Age</div><div class="val" id="m2">–</div></div>
+  <div class="card"><div class="lab">Most Common Opinion about AI</div><div class="val sm" id="m3">–</div></div>
+  <div class="card"><div class="lab">Most Common Grade</div><div class="val sm" id="m4">–</div></div>
+</section>
+<section class="charts">
+  <div class="card"><h2>Opinion about AI</h2><div class="donut" id="c1"></div></div>
+  <div class="card"><h2>Knowledge about AI</h2><div id="c2"></div></div>
+</section>
+<section class="card tablecard">
+  <h2>All responses</h2>
+  <div class="scroll"><table><thead><tr>
+    <th>Nickname</th><th>Age</th><th>Gender</th><th>Grade</th><th>AI usage</th><th>Opinion</th><th>Knowledge</th><th>Replace jobs?</th><th>AI in schoolwork</th>
+  </tr></thead><tbody id="rows"></tbody></table></div>
+  <div id="tmsg"></div>
+</section>
+</div>
+<script>
+var SB_URL='https://pywlcbtearjtjllfqvry.supabase.co';
+var SB_KEY='sb_publishable_D7iAl7Ib2vUuJtdpNiFbRQ_xXdDwUOn';
+var OPIN=['Strongly in favor','In favor','Neutral','Against','Strongly against'];
+var OCOL=['#16a34a','#86efac','#94a3b8','#fb923c','#dc2626'];
+var KNOW=['A lot','Some basic knowledge','Very little','Nothing'];
+var all=[],loaded=false;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function load(){
+  $('status').textContent='Loading latest records...';
+  fetch(SB_URL+'/rest/v1/survey_responses?select=*&order=created_at.desc&limit=1000',{headers:{apikey:SB_KEY}})
+  .then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('HTTP '+r.status+': '+t.slice(0,140))});return r.json()})
+  .then(function(d){all=d;loaded=true;$('status').textContent='Last updated '+new Date().toLocaleTimeString();draw()})
+  .catch(function(e){$('status').innerHTML='<span style="color:#b91c1c">Could not load data. ['+esc(e.message)+']</span>'});
+}
+function counts(a,k){var c={};a.forEach(function(r){c[r[k]]=(c[r[k]]||0)+1});return c}
+function mode(a,k){
+  if(!a.length)return '–';
+  var c=counts(a,k),m=Math.max.apply(null,Object.keys(c).map(function(x){return c[x]}));
+  var t=Object.keys(c).filter(function(x){return c[x]===m});
+  return t.join(' / ')+(t.length>1?' (tie)':'');
+}
+function draw(){
+  var show=$('tt').checked;
+  var d=all.filter(function(r){return show||!r.is_test});
+  $('m1').textContent=d.length;
+  $('m2').textContent=d.length?(d.reduce(function(s,r){return s+r.age},0)/d.length).toFixed(1):'–';
+  $('m3').textContent=mode(d,'opinion');
+  $('m4').textContent=mode(d,'grade');
+  // donut
+  var co=counts(d,'opinion'),tot=d.length;
+  if(!tot){$('c1').innerHTML='<div class="empty">No data yet.</div>'}
+  else{
+    var off=0,svg='<svg width="170" height="170" viewBox="0 0 36 36" role="img" aria-label="Opinion about AI"><circle cx="18" cy="18" r="15.9155" fill="none" stroke="#eef0f4" stroke-width="5"/>';
+    OPIN.forEach(function(o,i){var n=co[o]||0;if(!n)return;var p=n/tot*100;
+      svg+='<circle cx="18" cy="18" r="15.9155" fill="none" stroke="'+OCOL[i]+'" stroke-width="5" pathLength="100" stroke-dasharray="'+p+' '+(100-p)+'" stroke-dashoffset="'+(25-off)+'"/>';off+=p});
+    svg+='</svg>';
+    var lg='<div class="legend">';
+    OPIN.forEach(function(o,i){var n=co[o]||0;lg+='<div><span class="dot" style="background:'+OCOL[i]+'"></span>'+o+'<b>'+n+' ('+Math.round(n/tot*100)+'%)</b></div>'});
+    $('c1').innerHTML=svg+lg+'</div>';
+  }
+  // bars
+  var ck=counts(d,'knowledge'),mx=Math.max(1,Math.max.apply(null,KNOW.map(function(k){return ck[k]||0})));
+  $('c2').innerHTML=tot?KNOW.map(function(k){var n=ck[k]||0;return '<div class="bar"><span>'+k+'</span><div class="track"><div class="fill" style="width:'+(n/mx*100)+'%"></div></div><b>'+n+'</b></div>'}).join(''):'<div class="empty">No data yet.</div>';
+  // table
+  $('rows').innerHTML=d.map(function(r){return '<tr><td>'+esc(r.nickname)+(r.is_test?'<span class="tag">TEST</span>':'')+'</td><td>'+esc(r.age)+'</td><td>'+esc(r.gender||'–')+'</td><td>'+esc(r.grade)+'</td><td>'+esc(r.usage_freq)+'</td><td>'+esc(r.opinion)+'</td><td>'+esc(r.knowledge)+'</td><td>'+esc(r.jobs)+'</td><td>'+esc(r.school_ai)+'</td></tr>'}).join('');
+  $('tmsg').innerHTML=d.length?'':'<div class="msg">No responses to show yet.'+(!show&&all.length?' Turn on “Show test records” to see test rows.':'')+'</div>';
+}
+$('tt').onchange=function(){if(loaded)draw()};
+$('rf').onclick=load;
+load();
+</script>
+</body>
+</html>
