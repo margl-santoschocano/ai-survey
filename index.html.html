@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AI Survey</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--purple:#6c66ea;--panel:#fdfbf9;--navy:#2b3252;--gold:#f0b743;--green:#4cc17b;--gray:#dcdce4;--muted:#8a8da3;--red:#d9534f;box-sizing:border-box}
+*{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--purple);font-family:'Urbanist','Helvetica Neue',Arial,sans-serif;display:flex;justify-content:center;align-items:center;color:var(--navy)}
+.panel{background:var(--panel);width:100%;max-width:420px;height:100%;max-height:800px;display:flex;flex-direction:column;padding:calc(20px + env(safe-area-inset-top,0px)) 24px calc(20px + env(safe-area-inset-bottom,0px));overflow:hidden}
+@media(min-width:460px){.panel{border-radius:28px;height:92%;padding-top:24px;box-shadow:0 20px 60px rgba(0,0,0,.25)}}
+.top{display:flex;align-items:center;gap:14px;min-height:44px}
+.back{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--gray);background:#fff;display:grid;place-items:center;cursor:pointer;flex:none;padding:0}
+.back[hidden]{visibility:hidden;display:grid}
+.bar{flex:1;height:5px;background:#eeeef2;border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold);border-radius:5px;transition:width .35s ease}
+.body{flex:1;overflow-y:auto;padding-top:22px;display:flex;flex-direction:column}
+h1{font-size:25px;line-height:1.2;font-weight:600;margin:0 0 8px}
+.sub{font-size:15px;color:var(--navy);margin:0}
+.spacer{flex:1;min-height:12px}
+.opts{display:flex;flex-direction:column;gap:12px;padding-bottom:8px}
+.opt{position:relative;width:100%;min-height:60px;border-radius:40px;border:2px solid var(--gray);background:#fff;font:inherit;font-size:16px;color:var(--muted);cursor:pointer;padding:0 52px;text-align:center}
+.opt.sel{border-color:var(--gold);color:var(--navy);font-weight:700}
+.opt svg{position:absolute;right:22px;top:50%;transform:translateY(-50%);display:none}
+.opt.sel svg{display:block}
+.field{width:100%;height:64px;border-radius:40px;border:2px solid var(--gray);background:#fff;font:inherit;font-size:18px;text-align:center;color:var(--navy);outline:none;margin-bottom:8px}
+.field:focus{border-color:var(--gold)}
+.err{color:var(--red);font-size:14px;font-weight:600;min-height:20px;text-align:center;margin:6px 0}
+.next{width:100%;height:54px;border:0;border-radius:40px;background:var(--green);color:#fff;font:inherit;font-size:17px;font-weight:600;cursor:pointer;flex:none}
+.next:disabled{opacity:.6;cursor:default}
+.done{align-items:center;text-align:center;justify-content:center}
+.badge{width:120px;height:120px;border-radius:50%;background:#e8f7ee;display:grid;place-items:center;margin:0 auto 22px}
+.note{background:#fff4dc;border:1.5px solid var(--gold);border-radius:18px;padding:14px 16px;font-size:14px;line-height:1.4;margin-top:18px;text-align:left}
+.link{background:none;border:0;color:var(--muted);font:inherit;font-size:14px;text-decoration:underline;margin-top:12px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="panel" id="app"></div>
+<script>
+var CHECK='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f0b743" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+var BACK='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2b3252" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>';
+var Q=[
+{k:'nickname',t:'What is your nickname?',s:'Use a nickname, not your real name.',type:'text'},
+{k:'age',t:'How old are you?',type:'number'},
+{k:'gender',t:'What is your gender?',s:'This question is optional.',opt:['Male','Female','Other','Prefer not to say'],optional:true},
+{k:'grade',t:'What grade are you currently in?',opt:['7th Grade','8th Grade','9th Grade','10th Grade','11th Grade','12th Grade']},
+{k:'usage',t:'How often do you use Artificial Intelligence?',opt:['Every day','A few times a week','Rarely','Never']},
+{k:'beneficial',t:'Do you think AI is beneficial for society?',opt:['Yes','No','Not sure']},
+{k:'knowledge',t:'How much do you know about AI?',opt:['A lot','Some basic knowledge','Very little','Nothing']},
+{k:'jobs',t:'Do you think AI could replace many human jobs in the future?',opt:['Yes','No','Maybe']},
+{k:'school',t:'Should students be allowed to use AI for schoolwork?',opt:['Yes, without restrictions','Yes, with limitations','No','Not sure']},
+{k:'opinion',t:'Are you in favor of or against Artificial Intelligence?',opt:['Strongly in favor','In favor','Neutral','Against','Strongly against']}
+];
+var SB_URL='https://pywlcbtearjtjllfqvry.supabase.co';
+var SB_KEY='sb_publishable_D7iAl7Ib2vUuJtdpNiFbRQ_xXdDwUOn';
+var IS_TEST=/[?&]test=1/.test(location.search);
+function newKey(){return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16)})}
+var KEY=newKey(),saving=false;
+var A={},step=0,submitted=false,error='';
+var app=document.getElementById('app');
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function validate(q){
+  var v=A[q.k];
+  if(q.type==='text'){v=(v||'').trim();if(v.length<2)return 'Please enter a nickname (at least 2 characters).';if(v.length>20)return 'Keep it under 20 characters.'}
+  else if(q.type==='number'){var n=Number(v);if(v===undefined||v===''||isNaN(n))return 'Please enter your age as a number.';if(n%1!==0||n<8||n>99)return 'Please enter a real age between 8 and 99.'}
+  else if(!q.optional&&!v)return 'Please choose an answer to continue.';
+  return '';
+}
+function render(){
+  if(step>=Q.length){return renderDone()}
+  var q=Q[step],last=step===Q.length-1;
+  var h='<div class="top"><button class="back" id="back" aria-label="Back"'+(step===0?' hidden':'')+'>'+BACK+'</button><div class="bar"><i style="width:'+((step+1)/Q.length*100)+'%"></i></div></div>';
+  h+='<div class="body"><h1>'+q.t+'</h1>'+(q.s?'<p class="sub">'+q.s+'</p>':'');
+  if(q.opt){
+    h+='<div class="spacer"></div><div class="opts">';
+    q.opt.forEach(function(o){h+='<button class="opt'+(A[q.k]===o?' sel':'')+'" data-v="'+esc(o)+'">'+esc(o)+CHECK+'</button>'});
+    h+='</div>';
+  }else{
+    h+='<div class="spacer" style="max-height:120px"></div><input class="field" id="inp" '+(q.type==='number'?'type="number" inputmode="numeric" min="8" max="99" placeholder="Your age"':'type="text" maxlength="20" placeholder="Type here" autocomplete="off"')+' value="'+esc(A[q.k]||'')+'"><div class="spacer"></div>';
+  }
+  h+='<div class="err" id="err" role="alert">'+error+'</div></div>';
+  h+='<button class="next" id="next"'+(submitted?' disabled':'')+'>'+(last?'Submit':'Next')+'</button>';
+  app.innerHTML=h;
+  var b=document.getElementById('back');
+  if(b)b.onclick=function(){saveInput();error='';step--;render()};
+  document.querySelectorAll('.opt').forEach(function(el){el.onclick=function(){
+    var v=el.getAttribute('data-v');
+    if(q.optional&&A[q.k]===v)delete A[q.k];else A[q.k]=v;
+    error='';render()}});
+  var inp=document.getElementById('inp');
+  if(inp){inp.oninput=function(){A[q.k]=inp.value;document.getElementById('err').textContent=''};
+    inp.onkeydown=function(e){if(e.key==='Enter')next()}}
+  document.getElementById('next').onclick=next;
+}
+function saveInput(){var i=document.getElementById('inp');if(i)A[Q[step].k]=i.value}
+function next(){
+  if(submitted||saving)return;
+  saveInput();
+  var q=Q[step],e=validate(q);
+  if(e){error=e;document.getElementById('err').textContent=e;return}
+  error='';
+  if(step===Q.length-1){submit();return}
+  step++;render();
+}
+function submit(){
+  saving=true;
+  var b=document.getElementById('next');b.disabled=true;b.textContent='Saving...';
+  var body={submission_key:KEY,is_test:IS_TEST,nickname:A.nickname.trim(),age:Number(A.age),gender:A.gender||null,grade:A.grade,usage_freq:A.usage,beneficial:A.beneficial,knowledge:A.knowledge,jobs:A.jobs,school_ai:A.school,opinion:A.opinion};
+  fetch(SB_URL+'/rest/v1/survey_responses',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)})
+  .then(function(r){
+    if(r.ok||r.status===409){submitted=true;saving=false;step++;render()}
+    else{return r.text().then(function(t){throw new Error('HTTP '+r.status+': '+t.slice(0,160))})}
+  }).catch(function(e){saving=false;error='Could not save your answers. ['+(e&&e.message?e.message:'network error')+'] Tap Submit to try again.';render()});
+}
+function renderDone(){
+  app.innerHTML='<div class="top"><span></span></div><div class="body done"><div class="badge"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#4cc17b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>'
+  +'<h1>Thank you, '+esc((A.nickname||'').trim())+'!</h1><p class="sub">You finished all 10 questions. Your opinion about AI matters.</p>'
+  +'<div class="note"><b>Saved!</b> Your answers were sent to the database'+(IS_TEST?' <b>(marked as TEST)</b>':'')+'.</div>'
+  +'<button class="link" id="again">Restart (testing only)</button></div>';
+  document.getElementById('again').onclick=function(){A={};step=0;submitted=false;saving=false;KEY=newKey();error='';render()};
+}
+render();
+</script>
+</body>
+</html>
